@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.kutorov.MySecondTestAppSpringBoot.exception.UnsupportedCodeException;
 import ru.kutorov.MySecondTestAppSpringBoot.exception.ValidationFailedException;
 import ru.kutorov.MySecondTestAppSpringBoot.model.*;
+import ru.kutorov.MySecondTestAppSpringBoot.service.ModifyRequestService;
 import ru.kutorov.MySecondTestAppSpringBoot.service.ModifyResponseService;
+import ru.kutorov.MySecondTestAppSpringBoot.service.ModifySourceRequestService;
 import ru.kutorov.MySecondTestAppSpringBoot.service.ValidationService;
 import ru.kutorov.MySecondTestAppSpringBoot.util.DateTimeUtil;
 
@@ -25,12 +27,19 @@ import java.util.Date;
 public class MyController {
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
+    private final ModifyRequestService modifySourceRequestService;
+    private final ModifyRequestService modifySystemNameRequestService;
+
 
     @Autowired
     public MyController(ValidationService validationService,
-                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService){
+                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
+                        @Qualifier("modifySourceRequestService") ModifyRequestService modifySourceRequestService,
+                        @Qualifier("modifySystemNameRequestService") ModifyRequestService modifySystemNameRequestService){
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
+        this.modifySourceRequestService = modifySourceRequestService;
+        this.modifySystemNameRequestService = modifySystemNameRequestService;
     }
 
     @PostMapping(value = "/feedback")
@@ -47,6 +56,7 @@ public class MyController {
                 .errorMessage(ErrorMessages.EMPTY)
                 .build();
         log.info("create response: {}", response);
+        request.setRequestTime(System.currentTimeMillis());
 
         try{
             validationService.isValid((bindingResult));
@@ -73,6 +83,8 @@ public class MyController {
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
         modifyResponseService.modify(response);
+        modifySourceRequestService.modify(request);
+        modifySystemNameRequestService.modify(request);
         log.info("sent response: {}", response);
         return new ResponseEntity<>(modifyResponseService.modify(response), HttpStatus.OK);
     }
