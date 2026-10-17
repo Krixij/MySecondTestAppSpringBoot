@@ -13,13 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.kutorov.MySecondTestAppSpringBoot.exception.UnsupportedCodeException;
 import ru.kutorov.MySecondTestAppSpringBoot.exception.ValidationFailedException;
 import ru.kutorov.MySecondTestAppSpringBoot.model.*;
-import ru.kutorov.MySecondTestAppSpringBoot.service.ModifyRequestService;
-import ru.kutorov.MySecondTestAppSpringBoot.service.ModifyResponseService;
-import ru.kutorov.MySecondTestAppSpringBoot.service.ModifySourceRequestService;
-import ru.kutorov.MySecondTestAppSpringBoot.service.ValidationService;
+import ru.kutorov.MySecondTestAppSpringBoot.service.*;
 import ru.kutorov.MySecondTestAppSpringBoot.util.DateTimeUtil;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Slf4j
@@ -27,19 +23,19 @@ import java.util.Date;
 public class MyController {
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
-    private final ModifyRequestService modifySourceRequestService;
-    private final ModifyRequestService modifySystemNameRequestService;
+    private final AnnualBonusService annualBonusService;
+    private final QuarterBonusService quarterBonusService;
 
 
     @Autowired
     public MyController(ValidationService validationService,
                         @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
-                        @Qualifier("modifySourceRequestService") ModifyRequestService modifySourceRequestService,
-                        @Qualifier("modifySystemNameRequestService") ModifyRequestService modifySystemNameRequestService){
+                        AnnualBonusService annualBonusService,
+                        QuarterBonusService quarterBonusService){
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
-        this.modifySourceRequestService = modifySourceRequestService;
-        this.modifySystemNameRequestService = modifySystemNameRequestService;
+        this.annualBonusService = annualBonusService;
+        this.quarterBonusService = quarterBonusService;
     }
 
     @PostMapping(value = "/feedback")
@@ -56,36 +52,59 @@ public class MyController {
                 .errorMessage(ErrorMessages.EMPTY)
                 .build();
         log.info("create response: {}", response);
-        request.setRequestTime(System.currentTimeMillis());
+
 
         try{
-            validationService.isValid((bindingResult));
+            validationService.isValid(bindingResult);
             if ("123".equals(request.getUid())) {
                 throw new UnsupportedCodeException("Исключение uid = 123");
             }
         } catch (ValidationFailedException e) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.VALIDATION_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.VALIDATION);
-            log.error("error validation: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return buildErrorResponse(response, ErrorCodes.VALIDATION_EXCEPTION,
+                    ErrorMessages.VALIDATION, HttpStatus.BAD_REQUEST, "error validation");
         } catch (UnsupportedCodeException e){
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.UNSUPPORTED_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.UNSUPPORTED);
-            log.error("unsupported error: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return buildErrorResponse(response, ErrorCodes.UNSUPPORTED_EXCEPTION,
+                    ErrorMessages.UNSUPPORTED, HttpStatus.BAD_REQUEST, "unsupported error");
         } catch (Exception e){
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.UNKNOWN);
-            log.error("unknown error: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return buildErrorResponse(response, ErrorCodes.UNKNOWN_EXCEPTION,
+                    ErrorMessages.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR, "unknown error");
         }
+        calculateBonuses(request, response);
+
         modifyResponseService.modify(response);
-        modifySourceRequestService.modify(request);
-        modifySystemNameRequestService.modify(request);
         log.info("sent response: {}", response);
-        return new ResponseEntity<>(modifyResponseService.modify(response), HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    private void calculateBonuses(Request request, Response response) {
+        double annualBonus = annualBonusService.calculate(
+                request.getPositions(),
+                request.getSalary(),
+                request.getBonus(),
+                request.getWorkDays()
+        );
+        response.setAnnualBonus(annualBonus);
+        log.info("Годовая премия: {}", annualBonus);
+
+        double quarterBonus = quarterBonusService.calculate(
+                request.getPositions(),
+                request.getSalary(),
+                request.getBonus(),
+                request.getWorkDays()
+        );
+        response.setQuarterBonus(quarterBonus);
+        log.info("Квартальная премия: {}", quarterBonus);
+    }
+
+    private ResponseEntity<Response> buildErrorResponse(Response response,
+                                                        ErrorCodes errorCode,
+                                                        ErrorMessages errorMessage,
+                                                        HttpStatus status,
+                                                        String logMessage) {
+        response.setCode(Codes.FAILED);
+        response.setErrorCode(errorCode);
+        response.setErrorMessage(errorMessage);
+        log.error("{}: {}", logMessage, response);
+        return new ResponseEntity<>(response, status);
     }
 }

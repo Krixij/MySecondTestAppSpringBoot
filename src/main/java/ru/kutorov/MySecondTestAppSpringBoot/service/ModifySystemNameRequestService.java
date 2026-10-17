@@ -11,7 +11,7 @@ import ru.kutorov.MySecondTestAppSpringBoot.model.Request;
 public class ModifySystemNameRequestService implements  ModifyRequestService{
     @Override
     public void modify(Request request){
-        request.setSystemName("Service 1");
+        //request.setSystemName("Service 1");
 
         HttpEntity<Request> httpEntity = new HttpEntity<>(request);
 

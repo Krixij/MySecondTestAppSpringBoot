@@ -14,29 +14,61 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Request {
-
-    @NotBlank
-    @Size(max = 32)
+    /**
+     *  Уникальный идентификатор сообщения
+     */
+    @NotBlank(message = "UID не может быть пустым")
     private String uid;
-
+    /**
+     *  Уникальный идентификатор операции
+     */
     @NotBlank
     @Size(max = 32)
     private String operationUid;
-
-    private String systemName;
-
+    /**
+     *  Имя системы отправителя
+     */
+    private Systems systemName;
+    /**
+     *  Время создания сообщения
+     */
     private String systemTime;
-
+    /**
+     *  Наименование ресурса
+     */
     private String source;
-
-    @Min(1)
-    @Max(100000)
-    private int communicationId;
-
-    private int templateId;
-    private int productCode;
-    private int smsCode;
-    private long requestTime;
+    /**
+     *  Должность сотрудника
+     */
+    private Positions positions;
+    /**
+     *  Заработная плата
+     */
+    private Double salary;
+    /**
+     *  Бонус
+     */
+    private Double bonus;
+    /**
+     *  Количество отработанных дней
+     */
+    private Integer workDays;
+    /**
+     *  Уникальный идентификатор коммуникации
+     */
+    private Integer communicationId;
+    /**
+     *  Уникальный идентификатор шаблона
+     */
+    private Integer templateId;
+    /**
+     *  Код продукта
+     */
+    private Integer productCode;
+    /**
+     *  Смс код
+     */
+    private Integer smsCode;
 
     @Override
     public String toString(){
